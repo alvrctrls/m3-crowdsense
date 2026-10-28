@@ -1,0 +1,6 @@
+{
+  "name": "m3 CrowdSense",
+  "description": "AI-assisted public transport demand intelligence dashboard for Nairobi, Kenya.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

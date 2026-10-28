@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --m3-mint: #00e575;
+    --m3-mint-hover: #00cb68;
+    --m3-bg: #f7f7f2;
+    --m3-surface: #ffffff;
+    --m3-surface-elevated: #f3f4ee;
+    --m3-text: #171717;
+    --m3-muted: #6b7280;
+    --m3-border: rgba(23, 23, 23, 0.08);
+  }
+
+  body {
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f7f7f2;
+    color: #171717;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-mono-tabular {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Subtle custom scrollbars for dense analytical tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f3f4ee;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

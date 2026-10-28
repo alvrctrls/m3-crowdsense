@@ -1,0 +1,231 @@
+---
+name: CrowdSense Nairobi
+colors:
+  surface: '#fcf9f8'
+  surface-dim: '#dcd9d9'
+  surface-bright: '#fcf9f8'
+  surface-container-lowest: '#ffffff'
+  surface-container-low: '#f6f3f2'
+  surface-container: '#f0eded'
+  surface-container-high: '#eae7e7'
+  surface-container-highest: '#e5e2e1'
+  on-surface: '#1c1b1b'
+  on-surface-variant: '#3b4a3d'
+  inverse-surface: '#313030'
+  inverse-on-surface: '#f3f0ef'
+  outline: '#6b7b6c'
+  outline-variant: '#bacbb9'
+  surface-tint: '#006d34'
+  primary: '#006d34'
+  on-primary: '#ffffff'
+  primary-container: '#00e575'
+  on-primary-container: '#00602d'
+  inverse-primary: '#00e474'
+  secondary: '#585f6c'
+  on-secondary: '#ffffff'
+  secondary-container: '#dce2f3'
+  on-secondary-container: '#5e6572'
+  tertiary: '#86521b'
+  on-tertiary: '#ffffff'
+  tertiary-container: '#ffb978'
+  on-tertiary-container: '#794710'
+  error: '#ba1a1a'
+  on-error: '#ffffff'
+  error-container: '#ffdad6'
+  on-error-container: '#93000a'
+  primary-fixed: '#62ff96'
+  primary-fixed-dim: '#00e474'
+  on-primary-fixed: '#00210b'
+  on-primary-fixed-variant: '#005226'
+  secondary-fixed: '#dce2f3'
+  secondary-fixed-dim: '#c0c7d6'
+  on-secondary-fixed: '#151c27'
+  on-secondary-fixed-variant: '#404754'
+  tertiary-fixed: '#ffdcc0'
+  tertiary-fixed-dim: '#feb877'
+  on-tertiary-fixed: '#2d1600'
+  on-tertiary-fixed-variant: '#6a3b03'
+  background: '#fcf9f8'
+  on-background: '#1c1b1b'
+  surface-variant: '#e5e2e1'
+typography:
+  headline-xl:
+    fontFamily: Hanken Grotesk
+    fontSize: 36px
+    fontWeight: '700'
+    lineHeight: 44px
+    letterSpacing: -0.03em
+  headline-xl-mobile:
+    fontFamily: Hanken Grotesk
+    fontSize: 28px
+    fontWeight: '700'
+    lineHeight: 34px
+    letterSpacing: -0.02em
+  headline-lg:
+    fontFamily: Hanken Grotesk
+    fontSize: 24px
+    fontWeight: '600'
+    lineHeight: 32px
+    letterSpacing: -0.02em
+  headline-lg-mobile:
+    fontFamily: Hanken Grotesk
+    fontSize: 20px
+    fontWeight: '600'
+    lineHeight: 28px
+    letterSpacing: -0.01em
+  headline-md:
+    fontFamily: Hanken Grotesk
+    fontSize: 18px
+    fontWeight: '600'
+    lineHeight: 24px
+    letterSpacing: -0.01em
+  body-lg:
+    fontFamily: Hanken Grotesk
+    fontSize: 15px
+    fontWeight: '400'
+    lineHeight: 22px
+  body-md:
+    fontFamily: Hanken Grotesk
+    fontSize: 13px
+    fontWeight: '400'
+    lineHeight: 18px
+  body-sm:
+    fontFamily: Hanken Grotesk
+    fontSize: 12px
+    fontWeight: '400'
+    lineHeight: 16px
+  label-md:
+    fontFamily: Hanken Grotesk
+    fontSize: 11px
+    fontWeight: '600'
+    lineHeight: 14px
+    letterSpacing: 0.06em
+  label-sm:
+    fontFamily: Hanken Grotesk
+    fontSize: 10px
+    fontWeight: '700'
+    lineHeight: 12px
+    letterSpacing: 0.08em
+  metric-display:
+    fontFamily: Hanken Grotesk
+    fontSize: 32px
+    fontWeight: '700'
+    lineHeight: 36px
+    letterSpacing: -0.03em
+rounded:
+  sm: 0.25rem
+  DEFAULT: 0.5rem
+  md: 0.75rem
+  lg: 1rem
+  xl: 1.5rem
+  full: 9999px
+spacing:
+  gutter: 1rem
+  gutter-mobile: 0.75rem
+  margin: 1.5rem
+  margin-mobile: 1rem
+  space-xs: 0.25rem
+  space-sm: 0.5rem
+  space-md: 0.75rem
+  space-lg: 1.25rem
+  space-xl: 1.75rem
+---
+
+## Brand & Style
+
+### Personality & Mission
+The design system powers an AI-assisted operational intelligence suite for Nairobi's high-velocity matatu corridors, commuter rail lines, and transit hubs. The tone is utilitarian, authoritative, and data-dense yet unburdened by clutter. It evokes the poise of a municipal command center combined with the responsiveness of modern developer tooling. Every element serves telemetry: vehicle load factors, corridor dwell times, bottleneck predictions, and surge pricing dynamics across routes like Thika Road, Ngong Road, and Jogoo Road.
+
+### Visual Style: Modern Operational Minimalism
+- **Form follows telemetry**: Minimal decorative chrome. Structural density over empty air, balancing breathable spacing with maximum analytical throughput.
+- **Electric signal accents**: High-visibility electric mint acts as an active vector of state, indicating live demand, active telemetry nodes, and immediate recommendations against a calm, pale off-white foundation.
+- **Micro-tactile feedback**: Restrained boundaries, featherweight architectural outlines, and faint ambient shadows provide layer separation without visual bulk.
+- **Audience**: Transport planners, SACCO fleet operations controllers, municipal authorities, and data engineers requiring instant situational comprehension under high-stress operational conditions.
+
+## Colors
+
+### Surface & Canvas Architecture
+- **Canvas Base**: `#f7f7f2` serves as the primary canvas, delivering optical comfort and softening screen fatigue during round-the-clock shift work.
+- **Surface Layer (Cards & Panels)**: `#ffffff` strictly isolates analytical blocks, map control panels, data tables, and modal dialogs from the off-white ground.
+- **Surface Elevation (Sub-containers)**: `#f3f4ee` is utilized for inset stat strips, nested metric cells, and table header rows.
+
+### Signal & Text Palette
+- **Primary Signal (`#00e575`)**: Reserved strictly for high-priority operational interactions: active navigation selection, affirmative metric deltas, AI confidence tags, live GPS route threads, and primary trigger buttons. When placed on `#00e575`, foreground text must render in `#171717` to guarantee AAA accessible contrast.
+- **Primary Typography & Framing (`#171717`)**: Deep neutral black utilized for all primary metrics, tabular readouts, navigational typography, and heavy structural dividers.
+- **Secondary Neutral (`#6b7280`)**: Mid-tone slate grey assigned to metadata, axis scales, inactive tabs, timestamps, and column labels.
+- **System Borders (`rgba(23, 23, 23, 0.08)`)**: Precision hairlines that visually anchor `#ffffff` containers against `#f7f7f2` without inducing grid noise.
+
+## Typography
+
+### Structural Voice
+The typography is driven entirely by **Hanken Grotesk**, selected for its razor-sharp geometry, balanced aperture, and high legibility across dense micro-readouts and large operational figures.
+
+### Typographic Principles
+- **Tabular Numerics**: All numeric values in data tables, metric tiles, coordinates, and latency counters must leverage tabular lining figures (`font-variant-numeric: tabular-nums`) to prevent horizontal jitter during real-time streaming updates.
+- **Precision Micro-Labels**: Secondary tags, table column headers, and status flags employ uppercase tracking (`letter-spacing: 0.06em` to `0.08em`) to guarantee quick peripheral scanning against complex map views.
+- **Metric Scaling**: Headline levels step down decisively on smaller viewports, ensuring dense statistical scorecards remain single-line on multi-column tablet dashboards.
+
+## Layout & Spacing
+
+### Layout Grid Strategy
+The dashboard runs on an adaptive 12-column responsive fluid grid designed to display map visualizations alongside multi-tier analytical widgets:
+- **Desktop (≥ 1280px)**: 12-column grid, 24px (`1.5rem`) outer canvas margins, 16px (`1rem`) gutters. Side rail navigation is pinned at a fixed 240px width; secondary analytical panels can dock into 3- or 4-column side drawers.
+- **Tablet (768px – 1279px)**: 8-column layout with collapsible sidebar to icon rail (64px). Analytics stack below primary map views or route profiles.
+- **Mobile (< 768px)**: 4-column layout, 16px (`1rem`) outer margins, 12px (`0.75rem`) gutters. Complex tabular panels reflow into vertically stacked card lists with horizontal sub-scroll containers for granular metric rows.
+
+### Spacing Scale Architecture
+Internal component rhythms adhere to a dense 4px baseline matrix:
+- `space-xs` (4px): In-badge padding, icon-to-label separation, micro-metric deltas.
+- `space-sm` (8px): Button vertical padding, input element internal margins, table cell vertical padding.
+- `space-md` (12px): Standard element gaps inside cards, list item spacing.
+- `space-lg` (20px): Card internal padding, section breaks within panels.
+- `space-xl` (28px): Major block demarcation, canvas view separators.
+
+## Elevation & Depth
+
+### Atmospheric Strategy
+Elevation is expressed through sharp tonal juxtaposition and ultra-diffused, ambient shadow boundaries. Heavy drop shadows are banned to preserve analytical clarity.
+
+### Depth Levels
+- **Ground (0dp)**: Canvas layer (`#f7f7f2`). Completely flat.
+- **Container / Panel (1dp)**: Primary card containers (`#ffffff`). Layered with a 1px continuous border of `rgba(23, 23, 23, 0.07)` and an ambient shadow: `0 1px 3px rgba(23, 23, 23, 0.04), 0 4px 12px rgba(23, 23, 23, 0.02)`.
+- **Floating Overlays & Controls (2dp)**: Map zoom controls, layer filters, and search menus. Border: `1px solid rgba(23, 23, 23, 0.10)`. Shadow: `0 4px 16px rgba(23, 23, 23, 0.08), 0 1px 2px rgba(23, 23, 23, 0.04)`.
+- **Modal Dialogs & Command Bar (3dp)**: Centered situational alerts and quick-switch palettes. Border: `1px solid rgba(23, 23, 23, 0.12)`. Shadow: `0 12px 32px rgba(23, 23, 23, 0.12), 0 2px 6px rgba(23, 23, 23, 0.06)`.
+
+## Shapes
+
+### Geometry Definition
+The shape language uses moderate, systematic corner rounding (scale value `2`). It avoids sharp aggressive geometry without drifting into playful or informal softness:
+- **Base Components (`rounded`)**: 8px (`0.5rem`) for buttons, text inputs, filter tags, dropdowns, and individual KPI tiles.
+- **Structural Containers (`rounded-lg`)**: 16px (`1rem`) for dashboard cards, map viewport containers, side sheets, and modal windows.
+- **Nested Inner Surfaces (`rounded-md`)**: 6px (`0.375rem`) for inner segment bars, table active rows, and mini chart wrappers.
+- **Pills**: Completely rounded (9999px) strictly for circular icon buttons and continuous telemetry status pills (e.g., `'LIVE DEMO'`).
+
+## Components
+
+### Status Badges & Concept Tags
+- **Concept Tag (`DEMO DATA · AI CONCEPT`)**: Rendered in a high-density, pill-like form factor. Background: `rgba(23, 23, 23, 0.05)`, border: `1px solid rgba(23, 23, 23, 0.1)`, typography: `label-sm` (`#171717`). Preceded by a 6px pulsating dot in electric mint (`#00e575`).
+- **Operational Severity Badges**:
+  - *High Demand / Alert*: Background `#ffebee`, border `rgba(220, 38, 38, 0.2)`, text `#b91c1c`.
+  - *Optimal / Active*: Background `rgba(0, 229, 117, 0.12)`, border `rgba(0, 229, 117, 0.35)`, text `#0f7642`.
+  - *Neutral / Scheduled*: Background `#f3f4ee`, text `#6b7280`.
+
+### Buttons
+- **Primary CTA**: Background `#00e575`, text `#171717`, font weight 600. Border: 1px solid rgba(0, 0, 0, 0.08). Hover state drops brightness subtly (`#00cb68`); active state depresses by 1px.
+- **Secondary Button**: Background `#ffffff`, text `#171717`, border: `1px solid rgba(23, 23, 23, 0.15)`. Hover fills to `#f7f7f2`.
+- **Tertiary / Utility**: Ghost background, text `#6b7280`, hover color `#171717` on `#f3f4ee`.
+
+### Data Cards & Analytic Tiles
+- **Structure**: `#ffffff` background with 16px corner radius, framed by `1px solid rgba(23, 23, 23, 0.07)`.
+- **Header**: Top-aligned, 14px padding. Contains uppercase category label (`label-sm` in `#6b7280`) and quick-action icon.
+- **Body**: Features large numeric telemetry (`metric-display` in `#171717`) flanked by micro-deltas (`+14.2% demand`) with a mint green directional indicator.
+- **Footer**: Integrated mini sparkline or telemetry status bar seated on `#f7f7f2` sub-track.
+
+### Form Inputs & Corridor Filters
+- **Text & Select Inputs**: `#ffffff` background, 8px corner radius, 1px solid `rgba(23, 23, 23, 0.14)`. Height: 36px for dense dashboard workflows.
+- **Focus State**: `1px solid #171717` combined with a 2px outer glow of `rgba(0, 229, 117, 0.4)`. No default browser outlines.
+- **Checkboxes & Segment Toggles**: Unchecked: `#ffffff` with `#6b7280` border. Checked: solid `#171717` fill with `#00e575` interior check vector.
+
+### Navigation Rails & Tab Lists
+- **Sidebar Rail**: Pure white `#ffffff` or clean off-white `#f7f7f2` edge-to-edge container. Nav items feature 8px border-radius, `#6b7280` icon and label.
+- **Active Navigation Item**: Background `#171717`, text `#ffffff`, with a crisp 3px `#00e575` vertical signal indicator pinned to the left edge.
