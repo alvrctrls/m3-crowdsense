@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @layer base {
   :root {
@@ -27,6 +28,27 @@
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* Ensure Leaflet map tiles and custom markers render crisply */
+.leaflet-container {
+  font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #ebe9e2;
+  z-index: 1;
+}
+
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 5;
+}
+
+.crowdsense-stage-marker {
+  background: transparent;
+  border: none;
 }
 
 /* Subtle custom scrollbars for dense analytical tables */

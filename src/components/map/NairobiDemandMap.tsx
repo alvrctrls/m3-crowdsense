@@ -1,13 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import L from 'leaflet';
 import {
   Compass,
+  Crosshair,
+  Layers,
   Maximize2,
   Minus,
   Navigation,
   Plus,
 } from 'lucide-react';
 import {
-  DemandCategory,
   StageForecastResult,
   TransportRoute,
   TransportStage,
@@ -23,22 +25,205 @@ interface NairobiDemandMapProps {
   onExpandFullMap?: () => void;
 }
 
-// Bounding box for greater Nairobi commuter network
-const LAT_MIN = -1.365;
-const LAT_MAX = -1.202;
-const LNG_MIN = 36.732;
-const LNG_MAX = 36.915;
+type MapStyleMode = 'streets' | 'positron' | 'osm' | 'schematic';
 
-const SVG_WIDTH = 900;
-const SVG_HEIGHT = 580;
+const NAIROBI_METRO_CENTER: [number, number] = [-1.2785, 36.8325];
 
-function projectLatLng(lat: number, lng: number): { x: number; y: number } {
-  const xRatio = (lng - LNG_MIN) / (LNG_MAX - LNG_MIN);
-  const yRatio = (LAT_MAX - lat) / (LAT_MAX - LAT_MIN);
-  return {
-    x: Math.round(60 + xRatio * (SVG_WIDTH - 120)),
-    y: Math.round(45 + yRatio * (SVG_HEIGHT - 90)),
-  };
+/**
+ * Multi-point corridor geometries covering the Greater Nairobi Metropolitan Area:
+ * North to Ruiru & Kiambu, West to Kikuyu & Ruaka, Southwest to Karen & Ngong Town,
+ * South to Ongata Rongai, East to Kayole & Utawala, and Southeast to Syokimau & Mlolongo.
+ */
+const ROUTE_GEOMETRIES: Record<string, [number, number][]> = {
+  'rt-45-roysambu': [
+    [-1.2858, 36.8249], // Kencom
+    [-1.2821, 36.8245], // Odeon
+    [-1.2602, 36.8448], // Pangani / Muthaiga
+    [-1.2425, 36.8675], // Allsops
+    [-1.2185, 36.8872], // Roysambu
+    [-1.2015, 36.9165], // Githurai 45
+    [-1.1812, 36.9325], // Kahawa Sukari / KU
+    [-1.1485, 36.9605], // Ruiru Town / Eastern Bypass
+  ],
+  'rt-17b-kasarani': [
+    [-1.2821, 36.8245], // Odeon
+    [-1.2602, 36.8448], // Muthaiga
+    [-1.2185, 36.8872], // Roysambu
+    [-1.2214, 36.9065], // Kasarani / Mwiki
+  ],
+  'rt-100-kiambu': [
+    [-1.2821, 36.8245], // Odeon
+    [-1.2602, 36.8448], // Muthaiga
+    [-1.2245, 36.8415], // Ridgeways / Ciata Mall
+    [-1.1715, 36.8355], // Kiambu Town Terminus
+  ],
+  'rt-105-westlands': [
+    [-1.2858, 36.8249], // Kencom
+    [-1.2821, 36.8245], // Odeon
+    [-1.2647, 36.8028], // Westlands
+    [-1.2635, 36.7515], // Kangemi / Mountain View
+    [-1.2465, 36.6895], // Kikuyu / Muthiga Terminus
+  ],
+  'rt-107-ruaka': [
+    [-1.2821, 36.8245], // Odeon
+    [-1.2647, 36.8028], // Westlands
+    [-1.2365, 36.7915], // Gigiri / Rosslyn
+    [-1.2055, 36.7785], // Ruaka / Two Rivers
+  ],
+  'rt-23-kangemi': [
+    [-1.2647, 36.8028], // Westlands
+    [-1.2635, 36.7515], // Kangemi
+    [-1.2842, 36.7458], // Kawangware 46
+  ],
+  'rt-111-ngong': [
+    [-1.2858, 36.8249], // Kencom
+    [-1.2988, 36.8085], // Upper Hill / KNH
+    [-1.3004, 36.7846], // Prestige / Adams Arcade
+    [-1.3215, 36.7045], // Karen Crossroads
+    [-1.3615, 36.6585], // Ngong Town Terminus
+  ],
+  'rt-46-kawangware': [
+    [-1.2821, 36.8245], // Odeon
+    [-1.2988, 36.8085], // Upper Hill / KNH
+    [-1.3004, 36.7846], // Prestige / Adams
+    [-1.2842, 36.7458], // Kawangware 46
+  ],
+  'rt-58-buruburu': [
+    [-1.2908, 36.8282], // Railways
+    [-1.2912, 36.8585], // Jogoo Rd / Makadara
+    [-1.2895, 36.8831], // Buruburu / Donholm
+    [-1.2745, 36.9185], // Kayole Spine Rd
+  ],
+  'rt-33-embakasi': [
+    [-1.2908, 36.8282], // Railways
+    [-1.3092, 36.8435], // South B / Lusaka Rd
+    [-1.2895, 36.8831], // Donholm
+    [-1.3148, 36.8962], // Nyayo Gate B / Fedha
+    [-1.3385, 36.8985], // Cabanas
+    [-1.2815, 36.9685], // Utawala / Eastern Bypass
+  ],
+  'rt-11-southb': [
+    [-1.2908, 36.8282], // Railways
+    [-1.3092, 36.8435], // South B / Capital Centre
+  ],
+  'rt-110-kitengela': [
+    [-1.2908, 36.8282], // Railways
+    [-1.3092, 36.8435], // South B
+    [-1.3385, 36.8985], // Cabanas / Airport South
+    [-1.3595, 36.9315], // Syokimau / SGR
+    [-1.3945, 36.9445], // Mlolongo / Kitengela Jct
+  ],
+  'rt-125-rongai': [
+    [-1.2858, 36.8249], // Kencom
+    [-1.2908, 36.8282], // Railways
+    [-1.3215, 36.8015], // Lang'ata Rd / Wilson
+    [-1.3456, 36.7649], // Bomas / Galleria Junction
+    [-1.3965, 36.7465], // Ongata Rongai / Kware
+  ],
+};
+
+function isValidMapTilerKey(rawKey: unknown): rawKey is string {
+  if (typeof rawKey !== 'string') return false;
+  const trimmed = rawKey.trim();
+  if (
+    trimmed.length < 6 ||
+    trimmed === 'MY_MAPTILER_API_KEY' ||
+    trimmed === 'YOUR_MAPTILER_API_KEY'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function buildMarkerHtml(
+  stage: TransportStage,
+  forecast: StageForecastResult,
+  isSelected: boolean,
+  compactPreview: boolean
+): string {
+  const cat = forecast.predictedCategory;
+
+  const bgColor =
+    cat === 'high' ? '#dc2626' : cat === 'moderate' ? '#d97706' : '#00e575';
+  const textColor = cat === 'low' ? '#171717' : '#ffffff';
+  const borderColor = isSelected ? '#171717' : '#ffffff';
+  const ringShadow = isSelected
+    ? `0 0 0 4px rgba(0, 229, 117, 0.65), 0 6px 16px rgba(23, 23, 23, 0.38)`
+    : `0 2px 8px rgba(23, 23, 23, 0.28)`;
+
+  const shortName = stage.name.split('/')[0].split('(')[0].trim();
+  const catSymbol = cat === 'high' ? '!' : cat === 'moderate' ? '◆' : '●';
+
+  const showLabel = !compactPreview || isSelected;
+
+  return `
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -50%); cursor: pointer; user-select: none;">
+      ${
+        showLabel
+          ? `<div style="
+              margin-bottom: 3px;
+              padding: 1.5px 6px;
+              border-radius: 5px;
+              background: ${isSelected ? '#171717' : 'rgba(255, 255, 255, 0.94)'};
+              color: ${isSelected ? '#00e575' : '#171717'};
+              border: 1.5px solid ${isSelected ? '#00e575' : 'rgba(23, 23, 23, 0.22)'};
+              box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+              font-family: 'Hanken Grotesk', sans-serif;
+              font-size: 10.5px;
+              font-weight: 700;
+              white-space: nowrap;
+              line-height: 1.2;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+            ">
+              <span>${shortName}</span>
+              <span style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 9.5px;
+                padding: 0px 3.5px;
+                border-radius: 3px;
+                background: ${
+                  isSelected
+                    ? 'rgba(0,229,117,0.2)'
+                    : cat === 'high'
+                    ? '#ffebee'
+                    : cat === 'moderate'
+                    ? '#fff4e5'
+                    : '#e6f9ef'
+                };
+                color: ${
+                  isSelected
+                    ? '#ffffff'
+                    : cat === 'high'
+                    ? '#b91c1c'
+                    : cat === 'moderate'
+                    ? '#86521b'
+                    : '#005226'
+                };
+              ">${forecast.predictedPassengers}</span>
+            </div>`
+          : ''
+      }
+      <div style="
+        width: ${isSelected ? '28px' : '22px'};
+        height: ${isSelected ? '28px' : '22px'};
+        border-radius: 9999px;
+        background: ${bgColor};
+        color: ${textColor};
+        border: ${isSelected ? '3px' : '2px'} solid ${borderColor};
+        box-shadow: ${ringShadow};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: ${isSelected ? '12px' : '10px'};
+        font-weight: 800;
+      ">
+        ${catSymbol}
+      </div>
+    </div>
+  `;
 }
 
 export const NairobiDemandMap: React.FC<NairobiDemandMapProps> = ({
@@ -50,120 +235,343 @@ export const NairobiDemandMap: React.FC<NairobiDemandMapProps> = ({
   compactPreview = false,
   onExpandFullMap,
 }) => {
-  const [zoom, setZoom] = useState<number>(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragOrigin, setDragOrigin] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
-  const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
-  const [tileLoadError, setTileLoadError] = useState<boolean>(false);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const markerLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const hasInitialFitRef = useRef<boolean>(false);
 
-  const mapTilerKey = import.meta.env?.VITE_MAPTILER_API_KEY;
-  const hasMapTilerKey =
-    typeof mapTilerKey === 'string' &&
-    mapTilerKey.trim().length > 0 &&
-    !tileLoadError;
+  const rawMapTilerKey = import.meta.env?.VITE_MAPTILER_API_KEY;
+  const hasConfiguredKey = isValidMapTilerKey(rawMapTilerKey);
+
+  const [mapStyle, setMapStyle] = useState<MapStyleMode>('streets');
+  const [usingFallbackTiles, setUsingFallbackTiles] = useState<boolean>(
+    !hasConfiguredKey
+  );
+  const [tileErrorCount, setTileErrorCount] = useState<number>(0);
 
   const forecastMap = useMemo(
     () => new Map(forecasts.map((f) => [f.stageId, f])),
     [forecasts]
   );
 
-  const stageCoordMap = useMemo(() => {
-    const m = new Map<string, { x: number; y: number; stage: TransportStage }>();
+  // Count visible High, Moderate, and Low stages for live map legend counters
+  const categoryCounts = useMemo(() => {
+    let high = 0;
+    let moderate = 0;
+    let low = 0;
     stages.forEach((stg) => {
-      const pt = projectLatLng(stg.coordinates.lat, stg.coordinates.lng);
-      m.set(stg.id, { ...pt, stage: stg });
+      const f = forecastMap.get(stg.id);
+      if (!f) return;
+      if (f.predictedCategory === 'high') high += 1;
+      else if (f.predictedCategory === 'moderate') moderate += 1;
+      else low += 1;
     });
-    return m;
-  }, [stages]);
+    return { high, moderate, low };
+  }, [stages, forecastMap]);
 
-  const handleZoomIn = () => setZoom((z) => Math.min(2.2, Number((z + 0.25).toFixed(2))));
-  const handleZoomOut = () => {
-    setZoom((z) => {
-      const next = Math.max(1, Number((z - 0.25).toFixed(2)));
-      if (next === 1) setPan({ x: 0, y: 0 });
-      return next;
+  const activeTileConfig = useMemo(() => {
+    if (mapStyle === 'schematic') {
+      return null;
+    }
+
+    if (hasConfiguredKey && !usingFallbackTiles) {
+      const styleId =
+        mapStyle === 'positron'
+          ? 'dataviz-light'
+          : mapStyle === 'osm'
+          ? 'openstreetmap'
+          : 'streets-v2';
+      return {
+        url: `https://api.maptiler.com/maps/${styleId}/{z}/{x}/{y}.png?key=${rawMapTilerKey.trim()}`,
+        attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
+        label: `MapTiler (${styleId})`,
+      };
+    }
+
+    if (mapStyle === 'positron') {
+      return {
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; OpenStreetMap &copy; CARTO Positron',
+        label: 'MapTiler Positron Style (Light)',
+      };
+    }
+
+    if (mapStyle === 'osm') {
+      return {
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors',
+        label: 'Nairobi Metro Street Map (OSM)',
+      };
+    }
+
+    return {
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; OpenStreetMap &copy; CARTO Voyager',
+      label: 'MapTiler Streets Style (Greater Nairobi)',
+    };
+  }, [mapStyle, hasConfiguredKey, usingFallbackTiles, rawMapTilerKey]);
+
+  // 1. Initialize Leaflet Map instance once
+  useEffect(() => {
+    if (!mapContainerRef.current || leafletMapRef.current) return;
+
+    const initialZoom = compactPreview ? 10 : 11;
+    const map = L.map(mapContainerRef.current, {
+      center: NAIROBI_METRO_CENTER,
+      zoom: initialZoom,
+      minZoom: 9,
+      maxZoom: 17,
+      zoomControl: false,
+      attributionControl: true,
     });
-  };
-  const handleRecenter = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
 
-  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if ((e.target as HTMLElement).closest('[data-stage-marker="true"]')) {
+    routeLayerGroupRef.current = L.layerGroup().addTo(map);
+    markerLayerGroupRef.current = L.layerGroup().addTo(map);
+    leafletMapRef.current = map;
+
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+      if (stages.length > 1 && !hasInitialFitRef.current) {
+        hasInitialFitRef.current = true;
+        const bounds = L.latLngBounds(
+          stages.map(
+            (s) => [s.coordinates.lat, s.coordinates.lng] as [number, number]
+          )
+        );
+        map.fitBounds(bounds, {
+          padding: compactPreview ? [24, 24] : [44, 44],
+          maxZoom: compactPreview ? 11 : 12,
+        });
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      map.remove();
+      leafletMapRef.current = null;
+    };
+  }, [compactPreview, stages]);
+
+  // 2. Update Tile Layer whenever activeTileConfig changes
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = null;
+    }
+
+    if (!activeTileConfig) {
       return;
     }
-    setIsDragging(true);
-    setDragOrigin({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+
+    const layer = L.tileLayer(activeTileConfig.url, {
+      attribution: activeTileConfig.attribution,
+      maxZoom: 18,
+      crossOrigin: true,
+    });
+
+    let localErrors = 0;
+    layer.on('tileerror', () => {
+      localErrors += 1;
+      if (hasConfiguredKey && !usingFallbackTiles && localErrors >= 2) {
+        setUsingFallbackTiles(true);
+      } else if (localErrors >= 8) {
+        setTileErrorCount((c) => c + 1);
+      }
+    });
+
+    layer.addTo(map);
+    tileLayerRef.current = layer;
+  }, [activeTileConfig, hasConfiguredKey, usingFallbackTiles]);
+
+  // 3. Render Route Corridors & Stage Markers whenever stages, forecasts, or selection changes
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    const routeGroup = routeLayerGroupRef.current;
+    const markerGroup = markerLayerGroupRef.current;
+    if (!map || !routeGroup || !markerGroup) return;
+
+    routeGroup.clearLayers();
+    markerGroup.clearLayers();
+
+    // Draw Greater Nairobi Transport Corridor Polylines
+    routes.forEach((route) => {
+      const coords =
+        ROUTE_GEOMETRIES[route.id] ??
+        (route.stageIds
+          .map((sid) => stages.find((s) => s.id === sid)?.coordinates)
+          .filter(Boolean)
+          .map((c) => [c!.lat, c!.lng] as [number, number]));
+
+      if (coords.length < 2) return;
+
+      const isSelectedRoute = route.stageIds.includes(selectedStageId);
+
+      if (isSelectedRoute) {
+        L.polyline(coords, {
+          color: '#171717',
+          weight: 6.5,
+          opacity: 0.78,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(routeGroup);
+
+        L.polyline(coords, {
+          color: '#00e575',
+          weight: 3.5,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round',
+        })
+          .bindTooltip(`${route.routeNumber}: ${route.corridor}`, {
+            sticky: true,
+            direction: 'top',
+          })
+          .addTo(routeGroup);
+      } else {
+        L.polyline(coords, {
+          color: '#3b4a3d',
+          weight: 2.2,
+          opacity: 0.42,
+          dashArray: '5, 5',
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(routeGroup);
+      }
+    });
+
+    // Draw Stage Markers across the Greater Nairobi area
+    stages.forEach((stage) => {
+      const forecast = forecastMap.get(stage.id);
+      if (!forecast) return;
+
+      const isSelected = stage.id === selectedStageId;
+      const html = buildMarkerHtml(
+        stage,
+        forecast,
+        isSelected,
+        compactPreview
+      );
+
+      const icon = L.divIcon({
+        className: 'crowdsense-stage-marker',
+        html,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+
+      const zOffset = isSelected
+        ? 1000
+        : forecast.predictedCategory === 'high'
+        ? 500
+        : forecast.predictedCategory === 'moderate'
+        ? 300
+        : 150;
+
+      const marker = L.marker([stage.coordinates.lat, stage.coordinates.lng], {
+        icon,
+        zIndexOffset: zOffset,
+      });
+
+      marker.on('click', () => {
+        onSelectStage(stage.id);
+      });
+
+      marker.addTo(markerGroup);
+    });
+  }, [
+    stages,
+    routes,
+    forecastMap,
+    selectedStageId,
+    compactPreview,
+    onSelectStage,
+  ]);
+
+  const handleZoomIn = () => {
+    leafletMapRef.current?.zoomIn();
   };
 
-  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!isDragging) return;
-    const maxPan = 220 * zoom;
-    const nx = Math.max(-maxPan, Math.min(maxPan, e.clientX - dragOrigin.x));
-    const ny = Math.max(-maxPan, Math.min(maxPan, e.clientY - dragOrigin.y));
-    setPan({ x: nx, y: ny });
+  const handleZoomOut = () => {
+    leafletMapRef.current?.zoomOut();
   };
 
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
-
-  const getMarkerStyle = (category: DemandCategory, isSelected: boolean) => {
-    if (category === 'high') {
-      return {
-        fill: '#dc2626',
-        ring: '#fca5a5',
-        text: '#ffffff',
-        badgeBg: '#ffebee',
-        badgeText: '#b91c1c',
-        codeLabel: 'HIGH',
-        radius: isSelected ? 13 : 10,
-      };
+  const handleRecenterAll = () => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+    if (stages.length > 1) {
+      const bounds = L.latLngBounds(
+        stages.map(
+          (s) => [s.coordinates.lat, s.coordinates.lng] as [number, number]
+        )
+      );
+      map.fitBounds(bounds, {
+        padding: compactPreview ? [24, 24] : [44, 44],
+        maxZoom: compactPreview ? 11 : 12,
+      });
+    } else {
+      map.setView(NAIROBI_METRO_CENTER, compactPreview ? 10 : 11);
     }
-    if (category === 'moderate') {
-      return {
-        fill: '#d97706',
-        ring: '#fcd34d',
-        text: '#ffffff',
-        badgeBg: '#fff4e5',
-        badgeText: '#86521b',
-        codeLabel: 'MOD',
-        radius: isSelected ? 12 : 9,
-      };
-    }
-    return {
-      fill: '#00e575',
-      ring: '#006d34',
-      text: '#171717',
-      badgeBg: '#e6f9ef',
-      badgeText: '#005226',
-      codeLabel: 'LOW',
-      radius: isSelected ? 12 : 8.5,
-    };
   };
+
+  const handleFocusSelectedStage = () => {
+    const map = leafletMapRef.current;
+    const selected = stages.find((s) => s.id === selectedStageId);
+    if (!map || !selected) return;
+    map.setView(
+      [selected.coordinates.lat, selected.coordinates.lng],
+      Math.max(map.getZoom(), 13),
+      { animate: true }
+    );
+  };
+
+  const showSchematicBackdrop = mapStyle === 'schematic' || tileErrorCount > 2;
 
   return (
-    <div className="relative w-full h-full bg-[#eef0ea] rounded-xl overflow-hidden border border-[#171717]/10 select-none">
-      {/* Top-Left Status & Provider Mode Overlay */}
-      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none">
-        <div className="px-2.5 py-1 rounded-md bg-[#171717]/90 text-[#ffffff] text-[10px] font-semibold tracking-wider uppercase flex items-center gap-1.5 shadow-xs">
+    <div className="relative w-full h-full bg-[#e8ece5] rounded-xl overflow-hidden border border-[#171717]/12 select-none">
+      {/* Top-Left Status & Map Style Selector */}
+      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-2">
+        <div className="px-2.5 py-1 rounded-md bg-[#171717]/92 text-[#ffffff] text-[10px] font-semibold tracking-wider uppercase flex items-center gap-1.5 shadow-sm pointer-events-none">
           <span className="w-2 h-2 rounded-full bg-[#00e575]" />
-          <span>DEMO SIMULATION · NAIROBI NETWORK</span>
+          <span>DEMO SIMULATION · GREATER NAIROBI ({stages.length} STAGES)</span>
         </div>
-        <div className="px-2.5 py-1 rounded-md bg-[#ffffff]/95 text-[#171717] border border-[#171717]/12 text-[10px] font-medium shadow-xs">
-          {hasMapTilerKey
-            ? 'MapTiler Backdrop + GIS Stage Layer'
-            : 'Interactive Nairobi Corridor GIS Map (Demo Mode)'}
+
+        {/* Interactive Map Style Switcher */}
+        <div className="inline-flex items-center gap-1 bg-[#ffffff]/95 backdrop-blur-xs p-1 rounded-lg border border-[#171717]/15 shadow-sm text-[11px]">
+          <Layers className="w-3.5 h-3.5 text-[#006d34] ml-1 mr-0.5 shrink-0" />
+          {(
+            [
+              { id: 'streets', label: 'Streets' },
+              { id: 'positron', label: 'Light' },
+              { id: 'osm', label: 'Detailed OSM' },
+              { id: 'schematic', label: 'GIS Vector' },
+            ] as { id: MapStyleMode; label: string }[]
+          ).map((mode) => {
+            const active = mapStyle === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setMapStyle(mode.id)}
+                className={`px-2 py-0.5 rounded font-semibold transition-colors whitespace-nowrap ${
+                  active
+                    ? 'bg-[#171717] text-[#00e575]'
+                    : 'text-[#6b7280] hover:text-[#171717]'
+                }`}
+              >
+                {mode.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Top-Right Zoom / Recenter Controls */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-[#ffffff]/95 p-1 rounded-lg border border-[#171717]/12 shadow-sm">
+      {/* Top-Right Zoom / Focus / Recenter Controls */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-[#ffffff]/95 backdrop-blur-xs p-1 rounded-lg border border-[#171717]/15 shadow-sm">
         <button
           type="button"
           onClick={handleZoomIn}
@@ -184,13 +592,23 @@ export const NairobiDemandMap: React.FC<NairobiDemandMapProps> = ({
         </button>
         <button
           type="button"
-          onClick={handleRecenter}
-          title="Recenter Nairobi view"
-          aria-label="Recenter map"
+          onClick={handleFocusSelectedStage}
+          title="Center on selected stage"
+          aria-label="Center on selected stage"
+          className="px-2 py-1 rounded hover:bg-[#f3f4ee] text-[#171717] text-[11px] font-semibold flex items-center gap-1 transition-colors"
+        >
+          <Crosshair className="w-3.5 h-3.5 text-[#006d34]" />
+          <span className="hidden sm:inline">Stage</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleRecenterAll}
+          title="Fit all Greater Nairobi stages"
+          aria-label="Reset map view"
           className="px-2 py-1 rounded hover:bg-[#f3f4ee] text-[#171717] text-[11px] font-semibold flex items-center gap-1 transition-colors"
         >
           <Compass className="w-3.5 h-3.5 text-[#006d34]" />
-          <span>Reset</span>
+          <span>Fit All</span>
         </button>
         {compactPreview && onExpandFullMap && (
           <button
@@ -204,362 +622,71 @@ export const NairobiDemandMap: React.FC<NairobiDemandMapProps> = ({
         )}
       </div>
 
-      {/* Optional MapTiler Static Backdrop when VITE_MAPTILER_API_KEY is configured */}
-      {hasMapTilerKey && (
-        <img
-          src={`https://api.maptiler.com/maps/Positron/static/36.8235,-1.2835,11/900x580.png?key=${mapTilerKey}`}
-          alt="Nairobi MapTiler Backdrop"
-          referrerPolicy="no-referrer"
-          onError={() => setTileLoadError(true)}
-          className="absolute inset-0 w-full h-full object-cover opacity-55 pointer-events-none"
+      {/* Built-in Vector Schematic Underlay if user selects 'GIS Vector' mode */}
+      {showSchematicBackdrop && (
+        <div
+          className="absolute inset-0 pointer-events-none z-0 opacity-90"
+          style={{
+            backgroundImage:
+              'radial-gradient(rgba(23,23,23,0.12) 1px, transparent 1px), linear-gradient(to right, rgba(23,23,23,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(23,23,23,0.04) 1px, transparent 1px)',
+            backgroundSize: '24px 24px, 48px 48px, 48px 48px',
+            backgroundColor: '#eef0ea',
+          }}
         />
       )}
 
-      {/* Interactive SVG GIS Canvas */}
-      <svg
-        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        className={`w-full h-full ${
-          isDragging ? 'cursor-grabbing' : 'cursor-grab'
-        }`}
+      {/* Interactive Leaflet Map Container */}
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full z-0"
         role="region"
-        aria-label="Nairobi transport stages demand map"
-      >
-        <defs>
-          <pattern
-            id="nairobi-grid"
-            width="45"
-            height="45"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M 45 0 L 0 0 0 45"
-              fill="none"
-              stroke="#171717"
-              strokeWidth="0.6"
-              strokeOpacity="0.06"
-            />
-          </pattern>
-        </defs>
+        aria-label="Interactive Greater Nairobi transport stages demand map"
+      />
 
-        <g
-          transform={`translate(${SVG_WIDTH / 2 + pan.x}, ${
-            SVG_HEIGHT / 2 + pan.y
-          }) scale(${zoom}) translate(${-SVG_WIDTH / 2}, ${-SVG_HEIGHT / 2})`}
-        >
-          {/* Coordinate Grid Background */}
-          <rect
-            x={-400}
-            y={-400}
-            width={SVG_WIDTH + 800}
-            height={SVG_HEIGHT + 800}
-            fill="url(#nairobi-grid)"
-          />
-
-          {/* Geographic Zones: Karura Forest (North), Nairobi National Park (South), CBD Core */}
-          <polygon
-            points="390,95 495,80 520,155 430,175"
-            fill="#d9ead3"
-            fillOpacity="0.55"
-            stroke="#6b7b6c"
-            strokeWidth="0.8"
-            strokeDasharray="3 3"
-          />
-          <text
-            x="455"
-            y="132"
-            textAnchor="middle"
-            className="text-[9px] fill-[#3b4a3d] font-semibold uppercase tracking-widest opacity-70"
-          >
-            Karura Forest
-          </text>
-
-          <polygon
-            points="310,475 740,470 790,565 290,565"
-            fill="#d9ead3"
-            fillOpacity="0.5"
-            stroke="#6b7b6c"
-            strokeWidth="0.8"
-            strokeDasharray="4 4"
-          />
-          <text
-            x="530"
-            y="525"
-            textAnchor="middle"
-            className="text-[10px] fill-[#3b4a3d] font-semibold uppercase tracking-widest opacity-75"
-          >
-            Nairobi National Park Boundary
-          </text>
-
-          {/* Nairobi River Watercourse */}
-          <path
-            d="M 120,210 Q 320,255 455,275 T 820,235"
-            fill="none"
-            stroke="#93c5fd"
-            strokeWidth="3.5"
-            strokeOpacity="0.65"
-          />
-
-          {/* Central Business District (CBD) Zone Ring */}
-          <circle
-            cx={455}
-            cy={295}
-            r={52}
-            fill="#171717"
-            fillOpacity="0.035"
-            stroke="#171717"
-            strokeOpacity="0.18"
-            strokeDasharray="4 3"
-          />
-          <text
-            x={455}
-            y={236}
-            textAnchor="middle"
-            className="text-[9px] fill-[#6b7280] font-bold uppercase tracking-widest"
-          >
-            Nairobi CBD Core
-          </text>
-
-          {/* Major Nairobi Transport Corridor Polylines */}
-          {routes.map((route) => {
-            const pts = route.stageIds
-              .map((sid) => stageCoordMap.get(sid))
-              .filter(Boolean) as { x: number; y: number }[];
-            if (pts.length < 2) return null;
-
-            const isConnectedToSelected =
-              route.stageIds.includes(selectedStageId);
-            const pathD = pts
-              .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
-              .join(' ');
-
-            return (
-              <g key={route.id}>
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke={isConnectedToSelected ? '#006d34' : '#171717'}
-                  strokeOpacity={isConnectedToSelected ? 0.65 : 0.18}
-                  strokeWidth={isConnectedToSelected ? 3.2 : 1.8}
-                  strokeDasharray={isConnectedToSelected ? undefined : '4 3'}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </g>
-            );
-          })}
-
-          {/* Corridor Labels */}
-          <text
-            x={615}
-            y={145}
-            transform="rotate(-32 615 145)"
-            className="text-[9px] fill-[#6b7280] font-semibold uppercase tracking-wider"
-          >
-            Thika Superhighway (A2)
-          </text>
-          <text
-            x={290}
-            y={215}
-            transform="rotate(24 290 215)"
-            className="text-[9px] fill-[#6b7280] font-semibold uppercase tracking-wider"
-          >
-            Waiyaki Way
-          </text>
-          <text
-            x={605}
-            y={308}
-            className="text-[9px] fill-[#6b7280] font-semibold uppercase tracking-wider"
-          >
-            Jogoo Road Corridor
-          </text>
-          <text
-            x={260}
-            y={355}
-            transform="rotate(-14 260 355)"
-            className="text-[9px] fill-[#6b7280] font-semibold uppercase tracking-wider"
-          >
-            Ngong Road
-          </text>
-          <text
-            x={545}
-            y={395}
-            transform="rotate(28 545 395)"
-            className="text-[9px] fill-[#6b7280] font-semibold uppercase tracking-wider"
-          >
-            Mombasa Rd / Lusaka Rd
-          </text>
-
-          {/* Stage Markers */}
-          {stages.map((stage) => {
-            const coord = stageCoordMap.get(stage.id);
-            const forecast = forecastMap.get(stage.id);
-            if (!coord || !forecast) return null;
-
-            const isSelected = stage.id === selectedStageId;
-            const isHovered = stage.id === hoveredStageId;
-            const style = getMarkerStyle(
-              forecast.predictedCategory,
-              isSelected
-            );
-
-            // Prevent label overlap in dense CBD cluster by offsetting label positions
-            let labelOffsetY = -17;
-            let labelOffsetX = 0;
-            if (stage.id === 'stg-railways') {
-              labelOffsetY = 24;
-              labelOffsetX = 10;
-            } else if (stage.id === 'stg-odeon') {
-              labelOffsetY = -20;
-              labelOffsetX = -14;
-            } else if (stage.id === 'stg-kencom') {
-              labelOffsetY = -18;
-              labelOffsetX = 28;
-            } else if (stage.id === 'stg-roysambu') {
-              labelOffsetY = -18;
-              labelOffsetX = -20;
-            } else if (stage.id === 'stg-kasarani') {
-              labelOffsetY = 22;
-              labelOffsetX = 16;
-            }
-
-            return (
-              <g
-                key={stage.id}
-                data-stage-marker="true"
-                transform={`translate(${coord.x}, ${coord.y})`}
-                onClick={() => onSelectStage(stage.id)}
-                onMouseEnter={() => setHoveredStageId(stage.id)}
-                onMouseLeave={() => setHoveredStageId(null)}
-                className="cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label={`${stage.name}: ${forecast.predictedCategory} predicted demand (${forecast.predictedPassengers} passengers)`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelectStage(stage.id);
-                  }
-                }}
-              >
-                {/* Selection / Active Halo */}
-                {(isSelected || isHovered) && (
-                  <circle
-                    r={style.radius + 8}
-                    fill={style.fill}
-                    fillOpacity={0.22}
-                    stroke={ isSelected ? '#171717' : style.fill }
-                    strokeWidth={isSelected ? 2 : 1}
-                  />
-                )}
-
-                {/* Outer Category Ring */}
-                <circle
-                  r={style.radius + 3}
-                  fill="#ffffff"
-                  stroke={isSelected ? '#171717' : style.fill}
-                  strokeWidth={isSelected ? 2.5 : 1.5}
-                />
-
-                {/* Distinct Shape / Fill per Demand Category for Color-Blind Accessibility */}
-                {forecast.predictedCategory === 'high' ? (
-                  // High Demand: Bold Crimson Circle with Inner Exclamation Dot
-                  <g>
-                    <circle r={style.radius} fill={style.fill} />
-                    <text
-                      y={3.5}
-                      textAnchor="middle"
-                      className="text-[10px] font-bold fill-white font-mono-tabular"
-                    >
-                      !
-                    </text>
-                  </g>
-                ) : forecast.predictedCategory === 'moderate' ? (
-                  // Moderate Demand: Amber Diamond/Square-in-Circle
-                  <g>
-                    <circle r={style.radius} fill={style.fill} />
-                    <rect
-                      x={-3.5}
-                      y={-3.5}
-                      width={7}
-                      height={7}
-                      transform="rotate(45)"
-                      fill="#ffffff"
-                    />
-                  </g>
-                ) : (
-                  // Low Demand: Electric Mint Circle with Dark Center Core
-                  <g>
-                    <circle r={style.radius} fill={style.fill} />
-                    <circle r={3} fill="#171717" />
-                  </g>
-                )}
-
-                {/* Stage Pill Label */}
-                {(!compactPreview || isSelected || isHovered || stage.isHub) && (
-                  <g transform={`translate(${labelOffsetX}, ${labelOffsetY})`}>
-                    <rect
-                      x={-58}
-                      y={-10}
-                      width={116}
-                      height={19}
-                      rx={4}
-                      fill={isSelected ? '#171717' : '#ffffff'}
-                      fillOpacity={0.95}
-                      stroke="#171717"
-                      strokeOpacity={isSelected ? 0.9 : 0.16}
-                      strokeWidth={1}
-                    />
-                    <text
-                      x={0}
-                      y={2.5}
-                      textAnchor="middle"
-                      className={`text-[9.5px] font-semibold font-mono-tabular ${
-                        isSelected ? 'fill-[#00e575]' : 'fill-[#171717]'
-                      }`}
-                    >
-                      {stage.name.split('/')[0].trim()} · {forecast.predictedPassengers}
-                    </text>
-                  </g>
-                )}
-              </g>
-            );
-          })}
-        </g>
-      </svg>
-
-      {/* Bottom Legend Bar */}
-      <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 bg-[#ffffff]/95 backdrop-blur-xs px-3 py-2 rounded-lg border border-[#171717]/12 text-[11px] shadow-xs">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="font-semibold text-[#171717] uppercase tracking-wider text-[10px]">
-            Predicted Demand Legend:
+      {/* Bottom Legend Bar with Live Category Counts */}
+      <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 bg-[#ffffff]/95 backdrop-blur-xs px-3 py-2 rounded-lg border border-[#171717]/15 text-[11px] shadow-sm">
+        <div className="flex flex-wrap items-center gap-3.5">
+          <span className="font-bold text-[#171717] uppercase tracking-wider text-[10px]">
+            Demand Distribution:
           </span>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-[#00e575] border border-[#171717]/40 inline-flex items-center justify-center">
-              <span className="w-1 h-1 rounded-full bg-[#171717]" />
+            <span className="w-3.5 h-3.5 rounded-full bg-[#00e575] border border-[#171717] text-[#171717] text-[8px] font-bold inline-flex items-center justify-center">
+              ●
             </span>
-            <span className="text-[#171717] font-medium">Low</span>
+            <span className="text-[#171717] font-semibold tabular-nums">
+              Low ({categoryCounts.low})
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-[#d97706] inline-flex items-center justify-center">
-              <span className="w-1.5 h-1.5 bg-white rotate-45" />
+            <span className="w-3.5 h-3.5 rounded-full bg-[#d97706] border border-white text-white text-[8px] font-bold inline-flex items-center justify-center">
+              ◆
             </span>
-            <span className="text-[#171717] font-medium">Moderate</span>
+            <span className="text-[#171717] font-semibold tabular-nums">
+              Moderate ({categoryCounts.moderate})
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-[#dc2626] text-white text-[8px] font-bold inline-flex items-center justify-center">
+            <span className="w-3.5 h-3.5 rounded-full bg-[#dc2626] border border-white text-white text-[9px] font-bold inline-flex items-center justify-center">
               !
             </span>
-            <span className="text-[#171717] font-medium">High Pressure</span>
+            <span className="text-[#171717] font-semibold tabular-nums">
+              High Pressure ({categoryCounts.high})
+            </span>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-[#171717]/15">
+            <span className="w-4 h-1 rounded bg-[#00e575] border border-[#171717] inline-block" />
+            <span className="text-[#6b7280] text-[10px] font-medium">
+              Selected Stage Corridor
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 text-[#6b7280] text-[10px]">
           <Navigation className="w-3 h-3 text-[#006d34]" />
-          <span>Click any stage node to inspect forecast & factors</span>
+          <span>
+            {activeTileConfig ? activeTileConfig.label : 'GIS Vector Mode'} ·
+            Click stage marker to inspect
+          </span>
         </div>
       </div>
     </div>

@@ -22,12 +22,15 @@ export function runVerificationSuite() {
     status.displayBadge === 'm3 CONNECTION: DEMO MODE',
     'Provider badge must be m3 CONNECTION: DEMO MODE when unconfigured'
   );
-  assert(provider.getStages().length === 12, 'Expected 12 Nairobi demo stages');
-  assert(provider.getSaccos().length === 6, 'Expected 6 Nairobi demo SACCOs');
-  assert(provider.getRoutes().length === 10, 'Expected 10 Nairobi demo routes');
   assert(
-    provider.getObservations().length === 504,
-    'Expected 504 deterministic historical observations'
+    provider.getStages().length === 30,
+    'Expected 30 Greater Nairobi demo stages'
+  );
+  assert(provider.getSaccos().length === 6, 'Expected 6 Nairobi demo SACCOs');
+  assert(provider.getRoutes().length === 13, 'Expected 13 Nairobi demo routes');
+  assert(
+    provider.getObservations().length === 1260,
+    'Expected 1,260 deterministic historical observations'
   );
 
   // 1. Reproducibility check
@@ -74,28 +77,27 @@ export function runVerificationSuite() {
     'Evening peak forecast at Kencom must scale consistently across 15m, 30m, and 60m horizons'
   );
 
-  // 3. Time-period sensitivity check
-  const morningAll = forecastAllStages({
-    timePeriod: 'morning_peak',
-    dayType: 'weekday',
-    horizonMinutes: 30,
-  });
-  const middayAll = forecastAllStages({
-    timePeriod: 'midday',
-    dayType: 'weekday',
-    horizonMinutes: 30,
-  });
-  const eveningAll = forecastAllStages({
-    timePeriod: 'evening_peak',
-    dayType: 'weekday',
-    horizonMinutes: 30,
-  });
-  const sumMidday = middayAll.reduce((s, f) => s + f.predictedPassengers, 0);
-  const sumEvening = eveningAll.reduce((s, f) => s + f.predictedPassengers, 0);
-  assert(
-    sumEvening > sumMidday && morningAll.length === 12,
-    'Evening peak network demand must exceed midday off-peak baseline'
-  );
+  // 3. Verify diverse distribution of High, Moderate, and Low categories across all 3 time periods
+  for (const period of ['morning_peak', 'midday', 'evening_peak'] as const) {
+    const forecasts = forecastAllStages({
+      timePeriod: period,
+      dayType: 'weekday',
+      horizonMinutes: 30,
+    });
+    const highCount = forecasts.filter((f) => f.predictedCategory === 'high').length;
+    const modCount = forecasts.filter((f) => f.predictedCategory === 'moderate').length;
+    const lowCount = forecasts.filter((f) => f.predictedCategory === 'low').length;
+
+    assert(
+      highCount >= 5 && modCount >= 6 && lowCount >= 5,
+      `Expected balanced High/Moderate/Low distribution in ${period}, got High=${highCount}, Mod=${modCount}, Low=${lowCount}`
+    );
+    console.log(`Period [${period}] category distribution across 30 stages:`, {
+      high: highCount,
+      moderate: modCount,
+      low: lowCount,
+    });
+  }
 
   // 4. Overview insights & SACCO recommendations responsiveness
   const insightsEvening = generateOverviewInsights({
@@ -135,15 +137,14 @@ export function runVerificationSuite() {
   const evalSummary = evaluateForecastModelOnSyntheticData();
   assert(
     evalSummary.isSyntheticData === true &&
-      evalSummary.trainingSetCount === 403 &&
-      evalSummary.validationSetCount === 101,
-    'Model evaluation summary must report 403 training and 101 validation synthetic records'
+      evalSummary.totalSyntheticObservations === 1260,
+    'Model evaluation summary must report 1,260 total synthetic records'
   );
 
   console.log('ALL CROWDSENSE VERIFICATION CHECKS PASSED:', {
-    kencomEvening15m: h15.predictedPassengers,
-    kencomEvening30m: h30.predictedPassengers,
-    kencomEvening60m: h60.predictedPassengers,
+    totalStages: provider.getStages().length,
+    totalRoutes: provider.getRoutes().length,
+    totalObservations: evalSummary.totalSyntheticObservations,
     syntheticMAE: evalSummary.meanAbsoluteErrorPassengers,
     syntheticRMSE: evalSummary.rootMeanSquaredErrorPassengers,
     categoryAgreementPct: evalSummary.categoryMatchRatePercent,

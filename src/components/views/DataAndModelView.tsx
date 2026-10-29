@@ -52,8 +52,7 @@ export const DataAndModelView: React.FC = () => {
       step: '04',
       title: 'Stage-level forecasts',
       subtitle: 'Low / Moderate / High demand classification & confidence bands',
-      description:
-        'Produces reproducible passenger volume estimates, capacity utilization ratios, and completeness-adjusted confidence intervals across all 12 monitored Nairobi stages.',
+      description: `Produces reproducible passenger volume estimates, capacity utilization ratios, and completeness-adjusted confidence intervals across all ${stages.length} monitored Greater Nairobi stages.`,
     },
     {
       step: '05',
@@ -238,7 +237,7 @@ export const DataAndModelView: React.FC = () => {
                     {modelEvaluation.validationSetCount}
                   </div>
                   <div className="text-[10px] text-[#6b7280]">
-                    504 total demo logs
+                    {modelEvaluation.totalSyntheticObservations.toLocaleString()} total demo logs
                   </div>
                 </div>
 

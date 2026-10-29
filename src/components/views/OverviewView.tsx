@@ -25,6 +25,7 @@ export const OverviewView: React.FC = () => {
   const {
     stages,
     routes,
+    observations,
     allStageForecasts,
     selectedStage,
     selectedStageForecast,
@@ -96,7 +97,7 @@ export const OverviewView: React.FC = () => {
           <div className="pt-2.5 border-t border-[#171717]/6 flex items-center justify-between text-xs text-[#6b7280] tabular-nums">
             <span>{routes.length} demo routes</span>
             <span>·</span>
-            <span>504 synthetic logs</span>
+            <span>{observations.length.toLocaleString()} synthetic logs</span>
           </div>
         </div>
 

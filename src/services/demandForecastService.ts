@@ -681,7 +681,7 @@ export function evaluateForecastModelOnSyntheticData(): ModelEvaluationSummary {
     methodologySummary:
       'Deterministic additive linear baseline combining historical stage-period averages, directional peak momentum over 15/30/60-minute horizons, bus arrival headway pressure, and corridor interchange weights. Designed to be fully auditable and later replaceable by a privacy-preserving model trained on verified field counts.',
     limitations: [
-      'Trained and evaluated strictly on 504 synthetic demonstration records—metrics reflect internal consistency on synthetic patterns, not real-world Nairobi predictive accuracy.',
+      `Trained and evaluated strictly on ${allObs.length.toLocaleString()} synthetic demonstration records across ${stages.length} Greater Nairobi stages—metrics reflect internal consistency on synthetic patterns, not real-world Nairobi predictive accuracy.`,
       'Does not ingest live GPS matatu telemetry, rainfall/weather anomalies, special civic events, or unscheduled road incidents.',
       'Estimates waiting/boarding passenger demand at stages rather than road traffic congestion or vehicle travel speeds.',
       'Requires ethical review and field validation with aggregated, non-identifiable passenger counts before any real operational deployment.',

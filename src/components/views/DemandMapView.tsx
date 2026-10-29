@@ -194,7 +194,8 @@ export const DemandMapView: React.FC = () => {
               </h3>
               <p className="text-xs text-[#6b7280] mt-1 max-w-md">
                 Try clearing the search query or switching the demand category
-                filter to view all 12 demonstration stages across Nairobi.
+                filter to view all {stages.length} demonstration stages across
+                Greater Nairobi.
               </p>
               <button
                 type="button"
